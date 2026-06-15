@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PAS-VISOR-0E.COG1</title>
+<style>
+body{background:#101820;color:#eee;font-family:Arial,sans-serif;padding:16px}
+.card{background:#1b2635;padding:12px;border-radius:12px;margin:12px 0}
+button{padding:10px 14px}
+#out{white-space:pre-wrap}
+</style></head>
+<body>
+<h1>PAS‑VISOR‑0E.COG1</h1>
+<div class="card">
+<button onclick="analyze()">지금 뭐 보여?</button>
+</div>
+<div class="card" id="out">대기 중...</div>
+<script>
+function analyze(){
+const msgs=[
+"정면에 사람이 한 명 있습니다. 주변에는 의자와 책이 보입니다.",
+"여러 사람이 보입니다. 가장 가까운 대상은 중앙에 있습니다.",
+"실내 공간으로 보입니다. 특별한 위험 요소는 없습니다.",
+"화면이 다소 어둡습니다. 시야 확보가 어려울 수 있습니다."
+];
+const m=msgs[Math.floor(Math.random()*msgs.length)];
+document.getElementById('out').textContent=m;
+if('speechSynthesis' in window){speechSynthesis.speak(new SpeechSynthesisUtterance(m));}
+}
+</script>
+</body></html>
