@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#050914" />
-  <title>PAS-VISOR-0E.OT1 | 객체 탐색·추적 초기형</title>
+  <title>PAS-VISOR-0E.OT1FF | 객체 탐색·추적 경량형</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
   <style>
     :root {
       --bg: #050914;
-      --panel: rgba(5, 9, 20, 0.74);
-      --panel-strong: rgba(5, 9, 20, 0.92);
-      --line: rgba(142, 202, 255, 0.42);
+      --panel: rgba(7, 13, 24, 0.46);
+      --panel-strong: rgba(7, 13, 24, 0.68);
+      --line: rgba(142, 202, 255, 0.30);
       --text: #ecf6ff;
       --muted: #a9bed6;
       --accent: #62d6ff;
@@ -42,7 +42,7 @@
       background:
         radial-gradient(circle at 15% 15%, rgba(98, 214, 255, .15), transparent 28%),
         radial-gradient(circle at 85% 20%, rgba(131, 255, 189, .08), transparent 25%),
-        linear-gradient(160deg, rgba(6, 10, 24, .2), rgba(2, 4, 10, .95));
+        linear-gradient(160deg, rgba(6, 10, 24, .03), rgba(2, 4, 10, .10));
     }
 
     #app {
@@ -73,7 +73,7 @@
         linear-gradient(to right, transparent 49.8%, rgba(98,214,255,.2) 50%, transparent 50.2%),
         linear-gradient(to bottom, transparent 49.8%, rgba(98,214,255,.2) 50%, transparent 50.2%),
         repeating-linear-gradient(to bottom, rgba(255,255,255,.03) 0, rgba(255,255,255,.03) 1px, transparent 1px, transparent 7px);
-      opacity: .42;
+      opacity: .12;
     }
     #scanLine {
       position: absolute;
@@ -84,7 +84,7 @@
       z-index: 4;
       background: linear-gradient(90deg, transparent, rgba(98,214,255,.95), transparent);
       box-shadow: 0 0 18px rgba(98,214,255,.7);
-      animation: scan 4.2s linear infinite;
+      animation: scan 7s linear infinite; opacity:.55;
       pointer-events: none;
     }
     @keyframes scan {
@@ -102,10 +102,10 @@
     .glass, .miniCard, #assistantPanel, #searchPanel, #permissionPanel, #logBox {
       border: 1px solid var(--line);
       background: var(--panel);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       border-radius: 16px;
-      box-shadow: 0 10px 34px rgba(0,0,0,.32);
+      box-shadow: 0 6px 20px rgba(0,0,0,.22);
     }
 
     #hudTop {
@@ -315,10 +315,31 @@
       #chips { display: none; }
       #logBox { max-height: 100px; }
     }
+
+    /* OT1F: 밝은 카메라 우선·저지연 모드 */
+    video { filter: none !important; opacity: 1 !important; }
+    #assistantPanel { top: auto; bottom: 196px; max-height: 170px; }
+    #searchPanel { background: rgba(7,13,24,.58); }
+    #hudTop { gap: 6px; }
+    .miniCard { min-height: 46px; padding: 7px 8px; }
+    .miniLabel { font-size: 10px; }
+    .miniValue { font-size: 14px; }
+    button { min-height: 44px; }
+    @media (max-width: 520px) {
+      #hudTop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #assistantPanel { bottom: 180px; }
+      #assistantLine { font-size: 17px; }
+      #assistantReason { font-size: 13px; line-height:1.45; }
+      #searchPanel { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #scanLine { animation: none; display:none; }
+    }
+
   </style>
 </head>
 <body>
-  <main id="app" aria-label="PAS-VISOR-0E 객체 탐색·추적 초기형">
+  <main id="app" aria-label="PAS-VISOR-0E 객체 탐색·추적 경량형">
     <video id="video" autoplay playsinline muted></video>
     <canvas id="overlayCanvas" aria-label="객체 탐지 오버레이"></canvas>
     <canvas id="sampleCanvas"></canvas>
@@ -351,8 +372,8 @@
     </section>
 
     <section id="permissionPanel" aria-label="시작 패널">
-      <div class="subTitle">PAS-VISOR-0E.OT1</div>
-      <h1>객체 탐색·추적 초기형</h1>
+      <div class="subTitle">PAS-VISOR-0E.OT1F</div>
+      <h1>객체 탐색·추적 경량형</h1>
       <p>후면 카메라를 켜고 브라우저 내부 객체 탐지 모델을 불러옵니다. 화면의 객체 박스를 터치해 대상을 잠그거나, 아래 검색창에 찾을 대상을 입력해 자동 탐색할 수 있습니다.</p>
       <div id="bootButtons">
         <button id="startAllBtn" class="good">카메라 + 객체 탐지 시작</button>
@@ -529,9 +550,9 @@
         audio: false,
         video: {
           facingMode: { ideal: state.facingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30, max: 60 }
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 24, max: 30 }
         }
       };
 
@@ -617,7 +638,7 @@
       state.detecting = true;
       const started = performance.now();
       try {
-        const predictions = await state.model.detect(els.video, 20, 0.42);
+        const predictions = await state.model.detect(els.video, 8, 0.50);
         updateTracks(predictions, performance.now());
         state.lastDetectionAt = performance.now();
         const elapsed = Math.max(1, performance.now() - started);
@@ -627,7 +648,7 @@
         log(`탐지 실패: ${err.name || "Error"} ${err.message || ""}`);
       } finally {
         state.detecting = false;
-        setTimeout(detectLoop, 260);
+        setTimeout(detectLoop, 650);
       }
     }
 
@@ -883,7 +904,7 @@
     function drawOverlay() {
       const canvas = els.overlay;
       const rect = canvas.getBoundingClientRect();
-      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const dpr = 1;
       const targetW = Math.round(rect.width * dpr);
       const targetH = Math.round(rect.height * dpr);
       if (canvas.width !== targetW || canvas.height !== targetH) {
@@ -895,7 +916,7 @@
       ctx.clearRect(0, 0, rect.width, rect.height);
 
       const tr = getVideoTransform();
-      const visible = state.tracks.filter((t) => t.missing <= 4);
+      const visible = state.tracks.filter((t) => t.missing <= 6);
       const target = getTargetTrack();
 
       if (state.drawBoxes) {
@@ -1170,7 +1191,7 @@
       if (document.hidden) log("페이지 숨김: 모바일 브라우저가 카메라/탐지를 일시정지할 수 있음");
     });
 
-    log("PAS-VISOR-0E.OT1 로드 완료");
+    log("PAS-VISOR-0E.OT1F 로드 완료");
     updateHudObjects();
     startDrawLoop();
   </script>
