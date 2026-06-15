@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>PAS-VISOR-0E.COG1.VOICE-LAB</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<style>
+:root{--bg:#05080d;--p:rgba(5,9,16,.58);--b:rgba(135,200,255,.38);--t:#eef7ff;--m:#a9bdce;--g:#78f2af;--r:#ff7c86;--c:#6ed9ff;--y:#ffd36a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--t);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}#video{position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000;z-index:0}
+#overlay{position:fixed;inset:0;width:100vw;height:100vh;z-index:2;touch-action:manipulation}#dim{position:fixed;inset:0;z-index:1;background:linear-gradient(to bottom,rgba(0,0,0,.08),rgba(0,0,0,.05),rgba(0,0,0,.25));pointer-events:none}
+#top{position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top) + 8px);z-index:5;display:grid;grid-template-columns:repeat(2,1fr);gap:7px;pointer-events:none}
+.card{border:1px solid var(--b);background:rgba(5,9,16,.32);backdrop-filter:blur(2px);border-radius:16px;padding:9px 11px;box-shadow:0 0 14px rgba(0,0,0,.18)}.label{font-size:11px;letter-spacing:.1em;color:var(--m);text-transform:uppercase}.value{font-size:16px;font-weight:850;margin-top:3px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8792a0;margin-right:6px}.ok{background:var(--g)}.bad{background:var(--r)}.warn{background:var(--y)}
+#panel{position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:6;background:var(--p);border:1px solid var(--b);border-radius:20px;padding:12px;backdrop-filter:blur(3px)}
+#assistant{font-weight:950;font-size:18px;margin-bottom:5px}.sub{color:var(--m);font-size:13px;line-height:1.35;min-height:18px}.row{display:grid;grid-template-columns:1fr 70px;gap:8px;margin-top:10px}input,select{width:100%;border:1px solid rgba(110,217,255,.38);background:rgba(255,255,255,.07);border-radius:15px;padding:11px 12px;outline:none}
+button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.09);border-radius:15px;padding:9px 7px;font-weight:850;min-height:40px}button.primary{border-color:rgba(121,242,176,.55);background:rgba(65,220,130,.18)}button.on{border-color:rgba(255,211,106,.65);background:rgba(255,211,106,.15)}
+#buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}.small{font-size:12px;color:var(--m);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#voicePanel{display:none;margin-top:9px;border-top:1px solid rgba(135,200,255,.22);padding-top:9px}.voiceGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.voiceGrid label{font-size:11px;color:var(--m);display:block;margin:0 0 3px 3px}.rangeRow{display:grid;grid-template-columns:54px 1fr 38px;gap:6px;align-items:center;margin-top:6px}.rangeRow span{font-size:12px;color:var(--m)}input[type=range]{padding:0;border:none;background:transparent}.show{display:block!important}
+#start{position:fixed;inset:0;z-index:20;background:#05080d;display:flex;align-items:center;justify-content:center;padding:22px}.startBox{max-width:480px;width:100%;border:1px solid var(--b);border-radius:24px;background:rgba(8,15,26,.94);padding:20px}.startBox h1{font-size:22px;margin:0 0 8px}.startBox p{color:var(--m);line-height:1.45}.startBox button{width:100%;margin-top:10px}.hidden{display:none!important}
+@media(max-height:730px){#assistant{font-size:16px}.sub{font-size:12px}button{min-height:37px;padding:7px 5px}.row{margin-top:7px}#panel{padding:10px}.card{padding:7px 9px}.value{font-size:14px}#voicePanel{max-height:158px;overflow:auto}}
+</style>
+</head>
+<body>
+<video id="video" autoplay muted playsinline webkit-playsinline></video><div id="dim"></div><canvas id="overlay"></canvas>
+<div id="top">
+ <div class="card"><div class="label">Camera</div><div id="cam" class="value"><span class="dot"></span>대기</div></div>
+ <div class="card"><div class="label">Vision AI</div><div id="ai" class="value"><span class="dot"></span>꺼짐</div></div>
+ <div class="card"><div class="label">Objects</div><div id="obj" class="value">0개 / 0.0 fps</div></div>
+ <div class="card"><div class="label">Voice</div><div id="voiceStatus" class="value"><span class="dot"></span>OFF</div></div>
+</div>
+<div id="panel">
+ <div id="assistant">VOICE-LAB 통합 테스트</div>
+ <div id="reason" class="sub">카메라, 객체 인식, COG1 장면 요약, 음성 튜닝을 한 파일에서 테스트합니다.</div>
+ <div class="row"><input id="query" placeholder="명령: 지금 뭐 보여 / 사람 찾아 / 가장 가까운 대상 / 대상 설명"/><button id="run" class="primary">실행</button></div>
+ <div id="buttons">
+  <button id="flip">카메라 전환</button><button id="aiBtn">AI 켜기</button><button id="voiceBtn">음성 ON</button>
+  <button id="scene">장면 요약</button><button id="near">가까운 대상</button><button id="voiceTune">음성 튜닝</button>
+ </div>
+ <div id="voicePanel">
+  <div class="voiceGrid">
+   <div><label>목소리</label><select id="voiceSelect"></select></div>
+   <div><label>응답 스타일</label><select id="styleSelect"><option value="natural">자연스럽게</option><option value="brief">짧게</option><option value="calm">침착하게</option><option value="alert">경고 우선</option></select></div>
+  </div>
+  <div class="rangeRow"><span>속도</span><input id="rate" type="range" min="0.72" max="1.18" step="0.01" value="0.92"/><span id="rateV">0.92</span></div>
+  <div class="rangeRow"><span>음높이</span><input id="pitch" type="range" min="0.75" max="1.25" step="0.01" value="0.94"/><span id="pitchV">0.94</span></div>
+  <div class="rangeRow"><span>간격</span><input id="gap" type="range" min="0" max="700" step="50" value="250"/><span id="gapV">250</span></div>
+  <div class="voiceGrid" style="margin-top:8px"><button id="testVoice">목소리 테스트</button><button id="clear">대상 해제</button></div>
+ </div>
+ <div id="diag" class="small">진단 대기</div>
+</div>
+<div id="start"><div class="startBox"><h1>PAS‑VISOR‑0E.COG1.VOICE‑LAB</h1><p>번거롭게 버전마다 업로드하지 않도록, 카메라·객체 탐지·상황 해석·음성 튜닝을 한 HTML 안에 묶었습니다. 브라우저 기본 TTS의 한계 안에서 가장 자연스럽게 들리는 값을 조정할 수 있습니다.</p><button id="startBtn" class="primary">통합 테스트 시작</button></div></div>
+<script>
+const $=id=>document.getElementById(id);const video=$('video'),cv=$('overlay'),ctx=cv.getContext('2d');
+const cam=$('cam'),ai=$('ai'),obj=$('obj'),voiceStatus=$('voiceStatus'),assistant=$('assistant'),reason=$('reason'),diag=$('diag');
+let stream=null,facing='environment',model=null,aiOn=false,detecting=false,tracks=[],targetId=null,searchTerm='',lastDetect=0,fps=0,frames=0,lastFps=performance.now(),voiceOn=false,voices=[],lastSpeech='';
+const ko={'person':'사람','car':'자동차','truck':'트럭','bus':'버스','motorcycle':'오토바이','bicycle':'자전거','airplane':'비행기','cell phone':'휴대폰','book':'책','cup':'컵','chair':'의자','laptop':'노트북','tv':'TV','dog':'개','cat':'고양이','bottle':'병','backpack':'가방','keyboard':'키보드','mouse':'마우스','remote':'리모컨','clock':'시계','bed':'침대','dining table':'테이블','potted plant':'화분','umbrella':'우산','handbag':'가방','tie':'넥타이','scissors':'가위'};
+const aliases={'사람':'person','자동차':'car','차':'car','비행기':'airplane','휴대폰':'cell phone','핸드폰':'cell phone','폰':'cell phone','책':'book','컵':'cup','의자':'chair','노트북':'laptop','개':'dog','고양이':'cat','병':'bottle','가방':'backpack','키보드':'keyboard','마우스':'mouse','리모컨':'remote','시계':'clock','침대':'bed','테이블':'dining table','책상':'dining table','화분':'potted plant','우산':'umbrella','가위':'scissors'};
+function status(el,type,text){el.innerHTML=`<span class="dot ${type}"></span>${text}`}
+function resize(){cv.width=innerWidth;cv.height=innerHeight;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';ctx.setTransform(1,0,0,1,0,0)}addEventListener('resize',resize);resize();
+function loadVoices(){if(!('speechSynthesis'in window)){status(voiceStatus,'bad','미지원');return}voices=speechSynthesis.getVoices()||[];let sel=$('voiceSelect'),old=sel.value;sel.innerHTML='';let preferred=voices.filter(v=>/ko|korean|한국/i.test(v.lang+' '+v.name));let list=preferred.length?preferred:voices;if(!list.length){let o=document.createElement('option');o.textContent='기본 음성';o.value='';sel.appendChild(o);return}list.forEach((v,i)=>{let o=document.createElement('option');o.value=v.name;o.textContent=`${v.name} (${v.lang})`;sel.appendChild(o)});if([...sel.options].some(o=>o.value===old))sel.value=old;else{let google=list.find(v=>/google/i.test(v.name));let samsung=list.find(v=>/samsung/i.test(v.name));if(google)sel.value=google.name;else if(samsung)sel.value=samsung.name;}}
+if('speechSynthesis'in window){speechSynthesis.onvoiceschanged=loadVoices;setTimeout(loadVoices,150);setTimeout(loadVoices,800)}
+function getVoice(){let name=$('voiceSelect').value;return voices.find(v=>v.name===name)||voices.find(v=>/ko/i.test(v.lang))||null}
+function splitSpeech(t){return String(t).replace(/\s+/g,' ').split(/(?<=[.!?。]|습니다\.|니다\.|요\.)\s*/).filter(Boolean).slice(0,5)}
+function speak(t){lastSpeech=t;if(!voiceOn||!('speechSynthesis'in window))return;try{speechSynthesis.cancel();let parts=splitSpeech(t),i=0;const next=()=>{if(!voiceOn||i>=parts.length)return;let u=new SpeechSynthesisUtterance(parts[i++]);u.lang='ko-KR';let v=getVoice();if(v)u.voice=v;u.rate=parseFloat($('rate').value);u.pitch=parseFloat($('pitch').value);u.volume=1;u.onend=()=>setTimeout(next,parseInt($('gap').value));speechSynthesis.speak(u)};next()}catch(e){status(voiceStatus,'bad','오류')}}
+function voiceText(t){let st=$('styleSelect').value;if(st==='brief')return t.split(/[.]/).filter(Boolean).slice(0,2).join('. ')+'.';if(st==='calm')return '확인했습니다. '+t.replace(/위험/g,'주의');if(st==='alert'&&/가까운|어둡|흔들|위험/.test(t))return '주의하십시오. '+t;return t}
+function respond(t){t=voiceText(t);assistant.textContent=(t.split(/[.]/)[0]||t).slice(0,42);reason.textContent=t;speak(t)}
+async function startCamera(){status(cam,'warn','요청 중');try{if(stream)stream.getTracks().forEach(t=>t.stop());let cons={audio:false,video:{facingMode:{ideal:facing},width:{ideal:640},height:{ideal:480},frameRate:{ideal:24,max:30}}};try{stream=await navigator.mediaDevices.getUserMedia(cons)}catch(e){stream=await navigator.mediaDevices.getUserMedia({audio:false,video:true})}video.srcObject=stream;await video.play();status(cam,'ok',facing==='environment'?'후면 작동':'전면 작동');$('start').classList.add('hidden');respond('카메라 표시가 시작되었습니다. AI를 켜면 주변 객체를 해석하겠습니다.');loop()}catch(e){status(cam,'bad','실패');assistant.textContent='카메라 표시 실패';reason.textContent=(e.name||'Error')+' : '+(e.message||'권한 또는 HTTPS 상태를 확인하십시오.')}}
+async function loadAI(){if(model){aiOn=!aiOn;status(ai,aiOn?'ok':'',''+(aiOn?'작동':'꺼짐'));respond(aiOn?'AI 객체 인식을 켰습니다.':'AI 객체 인식을 껐습니다.');return}status(ai,'warn','로딩');respond('AI 모델을 불러오는 중입니다. 첫 실행은 잠시 걸릴 수 있습니다.');try{await tf.setBackend('webgl').catch(()=>tf.setBackend('cpu')).catch(()=>{});await tf.ready();model=await cocoSsd.load({base:'lite_mobilenet_v2'});aiOn=true;status(ai,'ok','작동');respond('AI 객체 인식이 준비되었습니다. 이제 장면을 요약할 수 있습니다.')}catch(e){status(ai,'bad','실패');assistant.textContent='AI 로딩 실패';reason.textContent=(e.message||'CDN 연결 또는 WebGL 문제일 수 있습니다.')}}
+function videoRect(){const vw=video.videoWidth||640,vh=video.videoHeight||480,sw=innerWidth,sh=innerHeight;const s=Math.max(sw/vw,sh/vh),w=vw*s,h=vh*s,x=(sw-w)/2,y=(sh-h)/2;return{x,y,w,h,s}}
+function mapBox(b){const r=videoRect();return{x:r.x+b[0]*r.s,y:r.y+b[1]*r.s,w:b[2]*r.s,h:b[3]*r.s}}function center(b){return{x:b.x+b.w/2,y:b.y+b.h/2}}function area(t){return Math.max(1,t.box.w*t.box.h)}
+function pos(t){const c=center(t.box);let h=c.x<innerWidth*.33?'왼쪽':c.x>innerWidth*.66?'오른쪽':'정면';let v=c.y<innerHeight*.33?'위쪽':c.y>innerHeight*.66?'아래쪽':'중앙';return h+(v==='중앙'?'':' '+v)}
+function distWord(t){const r=area(t)/(innerWidth*innerHeight);if(r>.22)return'매우 가까운';if(r>.10)return'가까운';if(r>.035)return'중간 거리의';return'먼'}
+function updateTracks(preds){const used=new Set(),next=[];let nextId=Math.max(0,...tracks.map(t=>t.id))+1;preds.forEach(p=>{const b=mapBox(p.bbox),c=center(b);let best=null,bd=1e9;tracks.forEach(t=>{if(used.has(t.id)||t.class!==p.class)return;const tc=center(t.box),d=Math.hypot(c.x-tc.x,c.y-tc.y);if(d<bd&&d<160){bd=d;best=t}});const id=best?best.id:nextId++;if(best)used.add(best.id);next.push({id,class:p.class,score:p.score,box:b,seen:best?best.seen+1:1})});tracks=next.slice(0,10)}
+async function detect(now){if(!aiOn||!model||detecting||!video.videoWidth||now-lastDetect<680)return;detecting=true;lastDetect=now;try{const p=await model.detect(video,10,0.50);updateTracks(p);if(searchTerm&&!targetId){const want=aliases[searchTerm]||searchTerm;const hit=tracks.filter(t=>t.class===want).sort((a,b)=>area(b)-area(a))[0];if(hit){targetId=hit.id;respond(`찾았습니다. ${ko[hit.class]||hit.class}은 ${pos(hit)}에 있습니다.`)}}}catch(e){}detecting=false}
+function draw(){ctx.clearRect(0,0,innerWidth,innerHeight);ctx.lineWidth=2;ctx.font='bold 14px system-ui';tracks.forEach(t=>{const locked=t.id===targetId;ctx.strokeStyle=locked?'#78f2af':'#6ed9ff';ctx.fillStyle=locked?'rgba(121,242,176,.12)':'rgba(110,217,255,.06)';ctx.fillRect(t.box.x,t.box.y,t.box.w,t.box.h);ctx.strokeRect(t.box.x,t.box.y,t.box.w,t.box.h);ctx.fillStyle=locked?'#78f2af':'#eaf7ff';ctx.fillText(`#${t.id} ${ko[t.class]||t.class} ${Math.round(t.score*100)}%`,t.box.x+6,Math.max(18,t.box.y-6))});const t=tracks.find(x=>x.id===targetId);if(t){const c=center(t.box);ctx.strokeStyle='#78f2af';ctx.beginPath();ctx.arc(c.x,c.y,42,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(innerWidth/2,innerHeight/2);ctx.lineTo(c.x,c.y);ctx.stroke();}}
+function summarize(){if(!aiOn)return'AI가 아직 꺼져 있습니다. 먼저 AI를 켜야 장면을 해석할 수 있습니다.';if(!tracks.length)return'현재 뚜렷하게 인식된 객체는 없습니다. 조명이 어둡거나 대상이 작을 수 있습니다.';const counts={};tracks.forEach(t=>counts[t.class]=(counts[t.class]||0)+1);const parts=Object.entries(counts).map(([k,v])=>`${ko[k]||k} ${v}개`);const near=[...tracks].sort((a,b)=>area(b)-area(a))[0];let s=`현재 ${parts.slice(0,4).join(', ')}가 보입니다. 가장 두드러진 대상은 ${pos(near)}의 ${distWord(near)} ${ko[near.class]||near.class}입니다. `;const has=c=>counts[c]>0;if(has('person')&&has('chair'))s+='사람과 의자가 함께 보여 앉아 있거나 앉을 수 있는 공간으로 추정됩니다. ';else if(has('person')&&has('book'))s+='사람과 책이 함께 보여 읽기나 학습 상황일 가능성이 있습니다. ';else if(has('person')&&has('cell phone'))s+='사람과 휴대폰이 함께 보여 휴대폰 사용 상황일 수 있습니다. ';else if(has('dining table')||has('chair'))s+='실내 생활 공간이나 책상 주변으로 보입니다. ';s+=area(near)/(innerWidth*innerHeight)>.22?'가까운 대상이 있으니 전방 거리를 확인하는 편이 좋겠습니다.':'특별히 가까운 위험 대상은 보이지 않습니다.';return s.trim()}
+function targetDesc(){const t=tracks.find(x=>x.id===targetId);if(!t)return'잠긴 대상이 없습니다. 화면의 박스를 터치하거나 대상을 검색해 주세요.';return`잠긴 대상은 ${ko[t.class]||t.class}입니다. 위치는 ${pos(t)}이고, 화면상으로는 ${distWord(t)} 대상으로 보입니다. 신뢰도는 ${Math.round(t.score*100)}퍼센트입니다.`}
+function nearestDesc(){if(!tracks.length)return'아직 인식된 대상이 없습니다.';const t=[...tracks].sort((a,b)=>area(b)-area(a))[0];targetId=t.id;return`가장 가까워 보이는 대상은 ${pos(t)}의 ${ko[t.class]||t.class}입니다. 이 대상을 잠금 처리했습니다.`}
+function runCommand(raw){const q=(raw||$('query').value||'').trim();if(!q)return;if(q.includes('조용')||q.includes('음소거')){voiceOn=false;status(voiceStatus,'','OFF');$('voiceBtn').classList.remove('on');$('voiceBtn').textContent='음성 ON';respond('음성 출력을 끕니다.');return}if(q.includes('지금')||q.includes('보여')||q.includes('요약')||q.includes('장면')){respond(summarize());return}if(q.includes('가까운')){respond(nearestDesc());return}if(q.includes('대상')&&q.includes('설명')){respond(targetDesc());return}if(q.includes('해제')){targetId=null;searchTerm='';respond('대상 잠금을 해제했습니다.');return}let foundKey=Object.keys(aliases).find(k=>q.includes(k));if(foundKey){searchTerm=foundKey;targetId=null;if(!aiOn)loadAI();respond(`${foundKey} 대상을 탐색하겠습니다.`);return}respond('명령을 이해하지 못했습니다. 지금 뭐 보여, 사람 찾아, 가장 가까운 대상, 대상 설명처럼 입력해 주세요.')}
+function updateText(){obj.textContent=`${tracks.length}개 / ${fps.toFixed(1)} fps`;const tr=stream?.getVideoTracks?.()[0];diag.textContent=`video ${video.videoWidth||0}×${video.videoHeight||0} / ${tr?.label||'track 대기'} / voice ${voices.length}개`}
+function loop(now=performance.now()){frames++;if(now-lastFps>1000){fps=frames*1000/(now-lastFps);frames=0;lastFps=now}detect(now);draw();updateText();requestAnimationFrame(loop)}
+cv.addEventListener('click',e=>{const x=e.clientX,y=e.clientY;let hit=[...tracks].reverse().find(t=>x>=t.box.x&&x<=t.box.x+t.box.w&&y>=t.box.y&&y<=t.box.y+t.box.h);if(hit){targetId=hit.id;respond(targetDesc())}else{targetId=null}});
+$('startBtn').onclick=startCamera;$('flip').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};$('aiBtn').onclick=loadAI;$('clear').onclick=()=>{targetId=null;searchTerm='';$('query').value='';respond('대상 잠금을 해제했습니다.')};$('run').onclick=()=>runCommand();$('query').addEventListener('keydown',e=>{if(e.key==='Enter')runCommand()});$('scene').onclick=()=>respond(summarize());$('near').onclick=()=>respond(nearestDesc());
+$('voiceBtn').onclick=()=>{voiceOn=!voiceOn;status(voiceStatus,voiceOn?'ok':'',voiceOn?'ON':'OFF');$('voiceBtn').classList.toggle('on',voiceOn);$('voiceBtn').textContent=voiceOn?'음성 OFF':'음성 ON';if(voiceOn){loadVoices();speak('음성 출력을 켰습니다. 이어폰에서 들리는지 확인해 주세요.')}else if('speechSynthesis'in window)speechSynthesis.cancel()};
+$('voiceTune').onclick=()=>$('voicePanel').classList.toggle('show');$('testVoice').onclick=()=>{voiceOn=true;status(voiceStatus,'ok','ON');$('voiceBtn').classList.add('on');$('voiceBtn').textContent='음성 OFF';speak('정면에 사람이 한 명 있습니다. 주변 상황은 안정적으로 보입니다. 필요한 경우 제가 짧게 안내하겠습니다.')};
+['rate','pitch','gap'].forEach(id=>$(id).oninput=()=>$(id+'V').textContent=$(id).value);
+</script>
+</body>
+</html>
