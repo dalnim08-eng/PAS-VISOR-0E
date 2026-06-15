@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050914" />
+  <title>개인 증강 비서 0세대 초기형</title>
+  <style>
+    :root {
+      --bg: #050914;
+      --panel: rgba(5, 9, 20, 0.72);
+      --panel-strong: rgba(5, 9, 20, 0.9);
+      --line: rgba(142, 202, 255, 0.42);
+      --text: #ecf6ff;
+      --muted: #a9bed6;
+      --accent: #62d6ff;
+      --warn: #ffd36a;
+      --bad: #ff7d7d;
+      --good: #83ffbd;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(98, 214, 255, .18), transparent 28%),
+        radial-gradient(circle at 85% 20%, rgba(131, 255, 189, .10), transparent 24%),
+        linear-gradient(160deg, rgba(6, 10, 24, .2), rgba(2, 4, 10, .95));
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background: #000;
+    }
+
+    video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+      transform: translateZ(0);
+    }
+
+    #scanLayer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background:
+        linear-gradient(to right, transparent 49.8%, rgba(98,214,255,.3) 50%, transparent 50.2%),
+        linear-gradient(to bottom, transparent 49.8%, rgba(98,214,255,.3) 50%, transparent 50.2%);
+      opacity: .42;
+    }
+
+    #scanLine {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      top: 0;
+      z-index: 3;
+      background: linear-gradient(90deg, transparent, rgba(98,214,255,.95), transparent);
+      box-shadow: 0 0 18px rgba(98,214,255,.7);
+      animation: scan 4s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes scan {
+      from { transform: translateY(0); opacity: .25; }
+      50% { opacity: .95; }
+      to { transform: translateY(100vh); opacity: .25; }
+    }
+
+    #targetReticle {
+      position: absolute;
+      z-index: 4;
+      width: 86px;
+      height: 86px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      pointer-events: none;
+      box-shadow: 0 0 22px rgba(98, 214, 255, .45), inset 0 0 12px rgba(98, 214, 255, .25);
+    }
+    #targetReticle::before, #targetReticle::after {
+      content: "";
+      position: absolute;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(98, 214, 255, .8);
+    }
+    #targetReticle::before { width: 2px; height: 110px; left: 50%; top: -12px; transform: translateX(-50%); }
+    #targetReticle::after { height: 2px; width: 110px; top: 50%; left: -12px; transform: translateY(-50%); }
+
+    #hudTop, #hudBottom, #assistantPanel, #permissionPanel {
+      position: absolute;
+      z-index: 5;
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+    }
+
+    #hudTop {
+      top: max(12px, env(safe-area-inset-top));
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .miniCard, #assistantPanel, #permissionPanel, #hudBottom {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.28);
+    }
+
+    .miniCard {
+      padding: 9px 10px;
+      min-height: 58px;
+    }
+
+    .label {
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .value {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #assistantPanel {
+      top: calc(max(12px, env(safe-area-inset-top)) + 78px);
+      padding: 12px 14px;
+      min-height: 94px;
+    }
+
+    #assistantLine {
+      font-size: 15px;
+      font-weight: 750;
+      line-height: 1.35;
+      margin-bottom: 8px;
+    }
+    #assistantReason {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    #permissionPanel {
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 18px;
+      background: var(--panel-strong);
+      text-align: left;
+    }
+    #permissionPanel h1 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+    #permissionPanel p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    #permissionPanel small {
+      color: var(--muted);
+      line-height: 1.45;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    button {
+      border: 1px solid rgba(98, 214, 255, .48);
+      background: linear-gradient(180deg, rgba(98,214,255,.22), rgba(98,214,255,.08));
+      color: var(--text);
+      padding: 11px 12px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 13px;
+      touch-action: manipulation;
+    }
+    button:active { transform: scale(.985); }
+    button.secondary {
+      border-color: rgba(255,255,255,.2);
+      background: rgba(255,255,255,.08);
+    }
+
+    #hudBottom {
+      bottom: max(12px, env(safe-area-inset-bottom));
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    #logBox {
+      position: absolute;
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      bottom: calc(max(12px, env(safe-area-inset-bottom)) + 72px);
+      max-height: 120px;
+      overflow: auto;
+      z-index: 5;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.45);
+      color: #d7e9ff;
+      font-size: 11px;
+      line-height: 1.45;
+      display: none;
+    }
+
+    .statusDot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background: var(--bad);
+      box-shadow: 0 0 10px currentColor;
+    }
+    .ok { color: var(--good); }
+    .ok .statusDot, .statusDot.ok { background: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+
+    #hiddenCanvas { display: none; }
+
+    @media (max-width: 380px) {
+      #hudTop { grid-template-columns: 1fr; }
+      #assistantPanel { top: calc(max(12px, env(safe-area-inset-top)) + 205px); }
+      .miniCard { min-height: unset; }
+      .buttons { grid-template-columns: 1fr; }
+      #hudBottom { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app" aria-label="개인 증강 비서 0세대 초기형">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="hiddenCanvas"></canvas>
+    <div id="scanLayer"></div>
+    <div id="scanLine"></div>
+    <div id="targetReticle"></div>
+
+    <section id="hudTop" aria-label="센서 상태">
+      <div class="miniCard">
+        <div class="label">Camera</div>
+        <div class="value" id="cameraValue"><span class="statusDot"></span>대기</div>
+      </div>
+      <div class="miniCard">
+        <div class="label">Heading / Tilt</div>
+        <div class="value" id="orientationValue">방위 --°</div>
+      </div>
+      <div class="miniCard">
+        <div class="label">Location</div>
+        <div class="value" id="locationValue">위치 대기</div>
+      </div>
+    </section>
+
+    <section id="assistantPanel" aria-label="비서 판단">
+      <div id="assistantLine">초기형 비서가 대기 중입니다.</div>
+      <div id="assistantReason">시작 버튼을 누르면 카메라·센서·위치 정보를 사용해 주변 상태를 아주 단순하게 판단합니다. 모든 분석은 이 페이지 안에서만 처리됩니다.</div>
+    </section>
+
+    <section id="permissionPanel" aria-label="권한 시작 패널">
+      <h1>0세대 초기형 비서</h1>
+      <p>스마트폰 카메라 화면 위에 HUD를 띄우고, 기울기·방위·위치·영상 밝기/움직임을 읽어 간단한 판단문을 냅니다.</p>
+      <div class="buttons">
+        <button id="startAllBtn">권한 요청 후 시작</button>
+        <button id="cameraOnlyBtn" class="secondary">카메라만 시작</button>
+        <button id="sensorOnlyBtn" class="secondary">센서만 요청</button>
+        <button id="locationOnlyBtn" class="secondary">위치만 요청</button>
+      </div>
+      <small>주의: 카메라·센서·위치는 보통 HTTPS 환경에서만 정상 동작합니다. iPhone은 센서 권한 요청이 반드시 버튼 터치 같은 사용자 동작에서 시작되어야 합니다.</small>
+    </section>
+
+    <pre id="logBox"></pre>
+
+    <nav id="hudBottom" aria-label="조작 버튼">
+      <button id="switchCameraBtn" class="secondary">카메라 전환</button>
+      <button id="speakBtn" class="secondary">판단 읽기</button>
+      <button id="toggleLogBtn" class="secondary">로그</button>
+    </nav>
+  </main>
+
+  <script>
+    "use strict";
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      video: $("video"),
+      canvas: $("hiddenCanvas"),
+      cameraValue: $("cameraValue"),
+      orientationValue: $("orientationValue"),
+      locationValue: $("locationValue"),
+      assistantLine: $("assistantLine"),
+      assistantReason: $("assistantReason"),
+      permissionPanel: $("permissionPanel"),
+      targetReticle: $("targetReticle"),
+      logBox: $("logBox"),
+      startAllBtn: $("startAllBtn"),
+      cameraOnlyBtn: $("cameraOnlyBtn"),
+      sensorOnlyBtn: $("sensorOnlyBtn"),
+      locationOnlyBtn: $("locationOnlyBtn"),
+      switchCameraBtn: $("switchCameraBtn"),
+      speakBtn: $("speakBtn"),
+      toggleLogBtn: $("toggleLogBtn"),
+    };
+
+    const state = {
+      stream: null,
+      facingMode: "environment",
+      cameraReady: false,
+      sensorsReady: false,
+      locationReady: false,
+      lastFrame: null,
+      lastFrameAt: 0,
+      brightness: null,
+      motionScore: 0,
+      target: null,
+      orientation: {
+        alpha: null,
+        beta: null,
+        gamma: null,
+        heading: null,
+        absolute: false,
+      },
+      motion: {
+        ax: null,
+        ay: null,
+        az: null,
+        magnitude: null,
+      },
+      location: {
+        lat: null,
+        lon: null,
+        accuracy: null,
+        speed: null,
+      },
+      assistantText: "초기형 비서가 대기 중입니다.",
+      assistantReason: "시작 버튼을 누르면 카메라·센서·위치 정보를 사용해 주변 상태를 아주 단순하게 판단합니다.",
+      logs: [],
+    };
+
+    function fmtNumber(value, digits = 1) {
+      return Number.isFinite(value) ? value.toFixed(digits) : "--";
+    }
+
+    function log(message) {
+      const time = new Date().toLocaleTimeString("ko-KR", { hour12: false });
+      state.logs.unshift(`[${time}] ${message}`);
+      state.logs = state.logs.slice(0, 40);
+      els.logBox.textContent = state.logs.join("\n");
+    }
+
+    function setAssistant(text, reason) {
+      state.assistantText = text;
+      state.assistantReason = reason;
+      els.assistantLine.textContent = text;
+      els.assistantReason.textContent = reason;
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setAssistant("이 브라우저는 카메라 API를 지원하지 않습니다.", "다른 모바일 브라우저 또는 HTTPS 배포 환경에서 다시 확인해야 합니다.");
+        log("카메라 API 없음");
+        return;
+      }
+
+      stopCamera();
+
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: state.facingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        }
+      };
+
+      try {
+        state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        els.video.srcObject = state.stream;
+        await els.video.play();
+        state.cameraReady = true;
+        els.cameraValue.innerHTML = `<span class="statusDot ok"></span>${state.facingMode === "environment" ? "후면" : "전면"} 작동`;
+        els.permissionPanel.style.display = "none";
+        log("카메라 시작 성공");
+        startFrameLoop();
+        updateAssistant();
+      } catch (err) {
+        state.cameraReady = false;
+        els.cameraValue.innerHTML = `<span class="statusDot"></span>거부/실패`;
+        setAssistant("카메라 권한을 얻지 못했습니다.", `${err.name || "Error"}: ${err.message || "권한 또는 HTTPS 상태를 확인하십시오."}`);
+        log(`카메라 실패: ${err.name || "Error"} ${err.message || ""}`);
+      }
+    }
+
+    function stopCamera() {
+      if (state.stream) {
+        state.stream.getTracks().forEach((track) => track.stop());
+      }
+      state.stream = null;
+      state.cameraReady = false;
+    }
+
+    async function switchCamera() {
+      state.facingMode = state.facingMode === "environment" ? "user" : "environment";
+      log(`카메라 전환 시도: ${state.facingMode}`);
+      await startCamera();
+    }
+
+    async function requestSensors() {
+      let orientationGranted = true;
+      let motionGranted = true;
+
+      try {
+        if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+          const result = await DeviceOrientationEvent.requestPermission();
+          orientationGranted = result === "granted";
+          log(`DeviceOrientation 권한: ${result}`);
+        }
+
+        if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+          const result = await DeviceMotionEvent.requestPermission();
+          motionGranted = result === "granted";
+          log(`DeviceMotion 권한: ${result}`);
+        }
+
+        if (orientationGranted) {
+          window.addEventListener("deviceorientation", handleOrientation, true);
+        }
+        if (motionGranted) {
+          window.addEventListener("devicemotion", handleMotion, true);
+        }
+
+        state.sensorsReady = orientationGranted || motionGranted;
+        if (state.sensorsReady) {
+          els.permissionPanel.style.display = "none";
+          log("센서 리스너 연결");
+        } else {
+          log("센서 권한 거부");
+        }
+        updateAssistant();
+      } catch (err) {
+        state.sensorsReady = false;
+        setAssistant("센서 권한 요청에 실패했습니다.", `${err.name || "Error"}: ${err.message || "버튼 터치로 다시 시도하거나 HTTPS 환경을 확인하십시오."}`);
+        log(`센서 실패: ${err.name || "Error"} ${err.message || ""}`);
+      }
+    }
+
+    function handleOrientation(event) {
+      const heading = typeof event.webkitCompassHeading === "number"
+        ? event.webkitCompassHeading
+        : (typeof event.alpha === "number" ? 360 - event.alpha : null);
+
+      state.orientation = {
+        alpha: event.alpha,
+        beta: event.beta,
+        gamma: event.gamma,
+        heading,
+        absolute: !!event.absolute,
+      };
+
+      els.orientationValue.textContent = `방위 ${fmtNumber(heading, 0)}° / 기울기 ${fmtNumber(event.beta, 0)}, ${fmtNumber(event.gamma, 0)}`;
+      updateAssistant();
+    }
+
+    function handleMotion(event) {
+      const acc = event.accelerationIncludingGravity || event.acceleration || {};
+      const ax = typeof acc.x === "number" ? acc.x : null;
+      const ay = typeof acc.y === "number" ? acc.y : null;
+      const az = typeof acc.z === "number" ? acc.z : null;
+      const magnitude = [ax, ay, az].every(Number.isFinite)
+        ? Math.sqrt(ax * ax + ay * ay + az * az)
+        : null;
+      state.motion = { ax, ay, az, magnitude };
+      updateAssistant();
+    }
+
+    function requestLocation() {
+      if (!navigator.geolocation) {
+        state.locationReady = false;
+        els.locationValue.textContent = "위치 미지원";
+        log("Geolocation API 없음");
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const c = pos.coords;
+          state.location = {
+            lat: c.latitude,
+            lon: c.longitude,
+            accuracy: c.accuracy,
+            speed: c.speed,
+          };
+          state.locationReady = true;
+          els.locationValue.textContent = `±${fmtNumber(c.accuracy, 0)}m / ${fmtNumber(c.speed ?? 0, 1)}m/s`;
+          els.permissionPanel.style.display = "none";
+          log(`위치 수신: ${fmtNumber(c.latitude, 5)}, ${fmtNumber(c.longitude, 5)} ±${fmtNumber(c.accuracy, 0)}m`);
+          updateAssistant();
+        },
+        (err) => {
+          state.locationReady = false;
+          els.locationValue.textContent = "위치 거부/실패";
+          setAssistant("위치 정보를 얻지 못했습니다.", `${err.code}: ${err.message || "위치 권한과 브라우저 설정을 확인하십시오."}`);
+          log(`위치 실패: ${err.code} ${err.message || ""}`);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 1000,
+          timeout: 10000,
+        }
+      );
+    }
+
+    async function startAll() {
+      log("전체 시작 시도");
+      await startCamera();
+      await requestSensors();
+      requestLocation();
+    }
+
+    function startFrameLoop() {
+      if (!state.cameraReady) return;
+      const loop = (now) => {
+        if (!state.cameraReady) return;
+        if (now - state.lastFrameAt > 280) {
+          analyzeFrame();
+          state.lastFrameAt = now;
+        }
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    }
+
+    function analyzeFrame() {
+      const video = els.video;
+      if (!video.videoWidth || !video.videoHeight) return;
+
+      const canvas = els.canvas;
+      const w = 160;
+      const h = Math.max(90, Math.round(w * video.videoHeight / video.videoWidth));
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(video, 0, 0, w, h);
+      const image = ctx.getImageData(0, 0, w, h);
+      const data = image.data;
+
+      let sum = 0;
+      let diff = 0;
+      const prev = state.lastFrame;
+      for (let i = 0; i < data.length; i += 16) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        sum += y;
+        if (prev) {
+          const py = 0.2126 * prev[i] + 0.7152 * prev[i + 1] + 0.0722 * prev[i + 2];
+          diff += Math.abs(y - py);
+        }
+      }
+      const samples = data.length / 16;
+      state.brightness = sum / samples;
+      state.motionScore = prev ? diff / samples : 0;
+      state.lastFrame = new Uint8ClampedArray(data);
+
+      if (state.target) {
+        const tx = Math.max(0, Math.min(w - 1, Math.floor(state.target.rx * w)));
+        const ty = Math.max(0, Math.min(h - 1, Math.floor(state.target.ry * h)));
+        const index = (ty * w + tx) * 4;
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        const targetBrightness = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        state.target.sample = { r, g, b, brightness: targetBrightness };
+      }
+
+      updateAssistant();
+    }
+
+    function updateAssistant() {
+      const parts = [];
+      const reasons = [];
+
+      if (!state.cameraReady && !state.sensorsReady && !state.locationReady) {
+        setAssistant("초기형 비서가 대기 중입니다.", "권한을 하나 이상 허용하면 카메라·센서·위치 기반 판단이 시작됩니다.");
+        return;
+      }
+
+      if (state.cameraReady) {
+        if (state.brightness !== null) {
+          if (state.brightness < 45) {
+            parts.push("주변이 어둡습니다");
+            reasons.push(`영상 평균 밝기 ${fmtNumber(state.brightness, 0)}/255 → 야간/저조도 가능성이 있습니다.`);
+          } else if (state.brightness > 205) {
+            parts.push("강한 빛이 들어옵니다");
+            reasons.push(`영상 평균 밝기 ${fmtNumber(state.brightness, 0)}/255 → 화면 과노출 가능성이 있습니다.`);
+          } else {
+            parts.push("카메라 시야가 안정적으로 확보되었습니다");
+            reasons.push(`영상 평균 밝기 ${fmtNumber(state.brightness, 0)}/255.`);
+          }
+        }
+
+        if (state.motionScore > 28) {
+          parts.push("화면 변화가 큽니다");
+          reasons.push(`프레임 변화량 ${fmtNumber(state.motionScore, 1)} → 이동 중이거나 카메라가 흔들리는 상태로 보입니다.`);
+        }
+      }
+
+      if (state.sensorsReady) {
+        const { beta, gamma, heading } = state.orientation;
+        if (Number.isFinite(beta) || Number.isFinite(gamma)) {
+          if (Math.abs(gamma || 0) > 35) {
+            parts.push("폰이 좌우로 크게 기울었습니다");
+            reasons.push(`gamma ${fmtNumber(gamma, 1)}°.`);
+          }
+          if (Math.abs(beta || 0) > 65) {
+            parts.push("폰이 세워진 상태입니다");
+            reasons.push(`beta ${fmtNumber(beta, 1)}°.`);
+          }
+        }
+        if (Number.isFinite(heading)) {
+          reasons.push(`추정 방위 ${fmtNumber(heading, 0)}°.`);
+        }
+        if (Number.isFinite(state.motion.magnitude) && state.motion.magnitude > 16) {
+          parts.push("움직임이 강합니다");
+          reasons.push(`가속도 크기 ${fmtNumber(state.motion.magnitude, 1)} m/s².`);
+        }
+      }
+
+      if (state.locationReady) {
+        if (Number.isFinite(state.location.accuracy) && state.location.accuracy > 80) {
+          parts.push("위치 정확도가 낮습니다");
+          reasons.push(`위치 오차 약 ±${fmtNumber(state.location.accuracy, 0)}m.`);
+        } else {
+          reasons.push(`위치 오차 약 ±${fmtNumber(state.location.accuracy, 0)}m.`);
+        }
+        if (Number.isFinite(state.location.speed) && state.location.speed > 1.4) {
+          parts.push("이동 중입니다");
+          reasons.push(`속도 ${fmtNumber(state.location.speed, 1)}m/s.`);
+        }
+      }
+
+      if (state.target) {
+        const side = state.target.rx < 0.4 ? "왼쪽" : state.target.rx > 0.6 ? "오른쪽" : "중앙";
+        const vertical = state.target.ry < 0.4 ? "위쪽" : state.target.ry > 0.6 ? "아래쪽" : "중앙";
+        parts.unshift(`대상 지정: 화면 ${vertical} ${side}`);
+        if (state.target.sample) {
+          reasons.push(`지정점 밝기 ${fmtNumber(state.target.sample.brightness, 0)}/255, RGB(${state.target.sample.r}, ${state.target.sample.g}, ${state.target.sample.b}).`);
+        } else {
+          reasons.push(`지정점 상대좌표 x=${fmtNumber(state.target.rx, 2)}, y=${fmtNumber(state.target.ry, 2)}.`);
+        }
+      }
+
+      const text = parts.length ? parts.slice(0, 3).join(" · ") : "초기 센서 데이터 수집 중입니다";
+      const reason = reasons.length ? reasons.slice(-5).join(" ") : "데이터가 아직 충분하지 않습니다.";
+      setAssistant(text, reason);
+    }
+
+    function placeTargetFromEvent(event) {
+      const rect = els.video.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const rx = Math.max(0, Math.min(1, x / rect.width));
+      const ry = Math.max(0, Math.min(1, y / rect.height));
+      state.target = { x, y, rx, ry, sample: null };
+      els.targetReticle.style.display = "block";
+      els.targetReticle.style.left = `${event.clientX}px`;
+      els.targetReticle.style.top = `${event.clientY}px`;
+      log(`대상 지정: rx=${fmtNumber(rx, 2)}, ry=${fmtNumber(ry, 2)}`);
+      updateAssistant();
+    }
+
+    function speakAssistant() {
+      if (!("speechSynthesis" in window)) {
+        log("SpeechSynthesis 미지원");
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(`${state.assistantText}. ${state.assistantReason}`);
+      utterance.lang = "ko-KR";
+      utterance.rate = 1.04;
+      window.speechSynthesis.speak(utterance);
+      log("음성 출력 시도");
+    }
+
+    els.startAllBtn.addEventListener("click", startAll);
+    els.cameraOnlyBtn.addEventListener("click", startCamera);
+    els.sensorOnlyBtn.addEventListener("click", requestSensors);
+    els.locationOnlyBtn.addEventListener("click", requestLocation);
+    els.switchCameraBtn.addEventListener("click", switchCamera);
+    els.speakBtn.addEventListener("click", speakAssistant);
+    els.toggleLogBtn.addEventListener("click", () => {
+      els.logBox.style.display = els.logBox.style.display === "block" ? "none" : "block";
+    });
+
+    els.video.addEventListener("click", placeTargetFromEvent);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        log("페이지 숨김: 카메라는 유지되지만 브라우저가 일시정지할 수 있음");
+      }
+    });
+
+    log("앱 로드 완료");
+  </script>
+</body>
+</html>
